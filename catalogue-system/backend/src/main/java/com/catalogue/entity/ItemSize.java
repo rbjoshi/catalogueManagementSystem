@@ -3,7 +3,11 @@ package com.catalogue.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.ZonedDateTime;
+import java.util.List;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "item_size")
@@ -27,6 +31,13 @@ public class ItemSize {
 
     @Column(length = 50)
     private String unit;
+
+    @Column(name = "decimal_value", precision = 15, scale = 2)
+    private BigDecimal decimalValue;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "size_list", columnDefinition = "jsonb")
+    private List<String> sizeList;
 
     @Column(name = "sort_order")
     @Builder.Default

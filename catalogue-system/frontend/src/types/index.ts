@@ -20,7 +20,7 @@ export interface AuthResponse {
 
 // ── Items ─────────────────────────────────────────────────────────────────────
 export interface LookupItem { id: number; name: string }
-export interface SizeItem   { id: number; label: string; unit?: string }
+export interface SizeItem   { id: number; label: string; unit?: string; decimalValue?: number; sizeList?: string[] }
 
 export interface Item {
   itemId: string
@@ -124,7 +124,7 @@ export interface CatalogueItemSlot {
 export interface Lookups {
   types:    Array<{ id: number; name: string; description: string }>
   subTypes: Array<{ id: number; name: string; typeId: number }>
-  sizes:    Array<{ id: number; label: string; unit: string }>
+  sizes:    Array<{ id: number; label: string; unit: string; decimalValue?: number; sizeList?: string[] }>
   brands:   Array<{ id: number; name: string; logoUrl: string }>
 }
 

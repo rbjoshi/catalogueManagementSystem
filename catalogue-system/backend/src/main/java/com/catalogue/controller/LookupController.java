@@ -40,6 +40,13 @@ public class LookupController extends BaseController {
         return ApiResponse.ok("Type created", lookupService.createType(currentEntId(), req));
     }
 
+    @PutMapping("/types/{typeId}")
+    public ApiResponse<Map<String, Object>> updateType(
+            @PathVariable Integer typeId,
+            @Valid @RequestBody LookupRequest req) {
+        return ApiResponse.ok("Type updated", lookupService.updateType(currentEntId(), typeId, req));
+    }
+
     @DeleteMapping("/types/{typeId}")
     public ApiResponse<Void> deleteType(@PathVariable Integer typeId) {
         lookupService.deleteType(currentEntId(), typeId);
@@ -63,6 +70,20 @@ public class LookupController extends BaseController {
                 lookupService.createSubType(currentEntId(), typeId, req));
     }
 
+    @PutMapping("/sub-types/{subTypeId}")
+    public ApiResponse<Map<String, Object>> updateSubType(
+            @PathVariable Integer subTypeId,
+            @Valid @RequestBody LookupRequest req) {
+        return ApiResponse.ok("Sub-type updated",
+                lookupService.updateSubType(currentEntId(), subTypeId, req));
+    }
+
+    @DeleteMapping("/sub-types/{subTypeId}")
+    public ApiResponse<Void> deleteSubType(@PathVariable Integer subTypeId) {
+        lookupService.deleteSubType(currentEntId(), subTypeId);
+        return ApiResponse.ok("Sub-type deleted", null);
+    }
+
     // ── Sizes ─────────────────────────────────────────────────────────────────
 
     @GetMapping("/sizes")
@@ -76,6 +97,19 @@ public class LookupController extends BaseController {
         return ApiResponse.ok("Size created", lookupService.createSize(currentEntId(), req));
     }
 
+    @PutMapping("/sizes/{sizeId}")
+    public ApiResponse<Map<String, Object>> updateSize(
+            @PathVariable Integer sizeId,
+            @Valid @RequestBody LookupRequest req) {
+        return ApiResponse.ok("Size updated", lookupService.updateSize(currentEntId(), sizeId, req));
+    }
+
+    @DeleteMapping("/sizes/{sizeId}")
+    public ApiResponse<Void> deleteSize(@PathVariable Integer sizeId) {
+        lookupService.deleteSize(currentEntId(), sizeId);
+        return ApiResponse.ok("Size deleted", null);
+    }
+
     // ── Brands ────────────────────────────────────────────────────────────────
 
     @GetMapping("/brands")
@@ -87,5 +121,18 @@ public class LookupController extends BaseController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<Map<String, Object>> createBrand(@Valid @RequestBody LookupRequest req) {
         return ApiResponse.ok("Brand created", lookupService.createBrand(currentEntId(), req));
+    }
+
+    @PutMapping("/brands/{brandId}")
+    public ApiResponse<Map<String, Object>> updateBrand(
+            @PathVariable Integer brandId,
+            @Valid @RequestBody LookupRequest req) {
+        return ApiResponse.ok("Brand updated", lookupService.updateBrand(currentEntId(), brandId, req));
+    }
+
+    @DeleteMapping("/brands/{brandId}")
+    public ApiResponse<Void> deleteBrand(@PathVariable Integer brandId) {
+        lookupService.deleteBrand(currentEntId(), brandId);
+        return ApiResponse.ok("Brand deleted", null);
     }
 }

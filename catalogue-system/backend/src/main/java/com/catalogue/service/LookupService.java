@@ -47,6 +47,16 @@ public class LookupService {
 
     @Transactional
     @CacheEvict(value = "lookups", key = "'types-' + #entId")
+    public Map<String, Object> updateType(String entId, Integer typeId, LookupRequest req) {
+        ItemType t = itemTypeRepository.findByTypeIdAndEnterpriseEntId(typeId, entId)
+                .orElseThrow(() -> new ResourceNotFoundException("Type not found"));
+        t.setName(req.getName());
+        t.setDescription(req.getDescription());
+        return typeToMap(itemTypeRepository.save(t));
+    }
+
+    @Transactional
+    @CacheEvict(value = "lookups", key = "'types-' + #entId")
     public void deleteType(String entId, Integer typeId) {
         ItemType t = itemTypeRepository.findByTypeIdAndEnterpriseEntId(typeId, entId)
                 .orElseThrow(() -> new ResourceNotFoundException("Type not found"));
@@ -56,7 +66,7 @@ public class LookupService {
 
     // ── Sub Types ─────────────────────────────────────────────────────────────
 
-    @Cacheable(value = "lookups", key = "'subtypes-' + #entId + '-' + #typeId")
+    @Cacheable(value = "lookups", key = "'subtypes-' + #entId + '-' + (#typeId ?: 'all')")
     public List<Map<String, Object>> getSubTypes(String entId, Integer typeId) {
         List<ItemSubType> list = typeId != null
                 ? itemSubTypeRepository.findByItemTypeTypeIdAndEnterpriseEntIdAndIsActiveTrueOrderByName(typeId, entId)
@@ -65,7 +75,7 @@ public class LookupService {
     }
 
     @Transactional
-    @CacheEvict(value = "lookups", key = "'subtypes-' + #entId + '-' + #req.typeId")
+    @CacheEvict(value = "lookups", allEntries = true)
     public Map<String, Object> createSubType(String entId, Integer typeId, LookupRequest req) {
         Enterprise ent = getEnterprise(entId);
         ItemType type = itemTypeRepository.findByTypeIdAndEnterpriseEntId(typeId, entId)
@@ -73,6 +83,25 @@ public class LookupService {
         ItemSubType st = ItemSubType.builder()
                 .enterprise(ent).itemType(type).name(req.getName()).description(req.getDescription()).build();
         return subTypeToMap(itemSubTypeRepository.save(st));
+    }
+
+    @Transactional
+    @CacheEvict(value = "lookups", allEntries = true)
+    public Map<String, Object> updateSubType(String entId, Integer subTypeId, LookupRequest req) {
+        ItemSubType st = itemSubTypeRepository.findBySubTypeIdAndEnterpriseEntId(subTypeId, entId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sub-type not found"));
+        st.setName(req.getName());
+        st.setDescription(req.getDescription());
+        return subTypeToMap(itemSubTypeRepository.save(st));
+    }
+
+    @Transactional
+    @CacheEvict(value = "lookups", allEntries = true)
+    public void deleteSubType(String entId, Integer subTypeId) {
+        ItemSubType st = itemSubTypeRepository.findBySubTypeIdAndEnterpriseEntId(subTypeId, entId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sub-type not found"));
+        st.setActive(false);
+        itemSubTypeRepository.save(st);
     }
 
     // ── Sizes ─────────────────────────────────────────────────────────────────
@@ -90,8 +119,31 @@ public class LookupService {
             throw new BadRequestException("Size label already exists: " + req.getName());
         Enterprise ent = getEnterprise(entId);
         ItemSize s = ItemSize.builder()
-                .enterprise(ent).label(req.getName()).build();
+                .enterprise(ent).label(req.getName())
+                .decimalValue(req.getDecimalValue())
+                .sizeList(req.getSizeList() != null ? req.getSizeList() : java.util.Collections.emptyList())
+                .build();
         return sizeToMap(itemSizeRepository.save(s));
+    }
+
+    @Transactional
+    @CacheEvict(value = "lookups", key = "'sizes-' + #entId")
+    public Map<String, Object> updateSize(String entId, Integer sizeId, LookupRequest req) {
+        ItemSize s = itemSizeRepository.findBySizeIdAndEnterpriseEntId(sizeId, entId)
+                .orElseThrow(() -> new ResourceNotFoundException("Size not found"));
+        s.setLabel(req.getName());
+        s.setDecimalValue(req.getDecimalValue());
+        s.setSizeList(req.getSizeList() != null ? req.getSizeList() : java.util.Collections.emptyList());
+        return sizeToMap(itemSizeRepository.save(s));
+    }
+
+    @Transactional
+    @CacheEvict(value = "lookups", key = "'sizes-' + #entId")
+    public void deleteSize(String entId, Integer sizeId) {
+        ItemSize s = itemSizeRepository.findBySizeIdAndEnterpriseEntId(sizeId, entId)
+                .orElseThrow(() -> new ResourceNotFoundException("Size not found"));
+        s.setActive(false);
+        itemSizeRepository.save(s);
     }
 
     // ── Brands ────────────────────────────────────────────────────────────────
@@ -111,6 +163,24 @@ public class LookupService {
         ItemBrand b = ItemBrand.builder()
                 .enterprise(ent).name(req.getName()).build();
         return brandToMap(itemBrandRepository.save(b));
+    }
+
+    @Transactional
+    @CacheEvict(value = "lookups", key = "'brands-' + #entId")
+    public Map<String, Object> updateBrand(String entId, Integer brandId, LookupRequest req) {
+        ItemBrand b = itemBrandRepository.findByBrandIdAndEnterpriseEntId(brandId, entId)
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found"));
+        b.setName(req.getName());
+        return brandToMap(itemBrandRepository.save(b));
+    }
+
+    @Transactional
+    @CacheEvict(value = "lookups", key = "'brands-' + #entId")
+    public void deleteBrand(String entId, Integer brandId) {
+        ItemBrand b = itemBrandRepository.findByBrandIdAndEnterpriseEntId(brandId, entId)
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found"));
+        b.setActive(false);
+        itemBrandRepository.save(b);
     }
 
     // ── All lookups at once (for frontend init) ───────────────────────────────
@@ -137,8 +207,13 @@ public class LookupService {
     }
 
     private Map<String, Object> sizeToMap(ItemSize s) {
-        return Map.of("id", s.getSizeId(), "label", s.getLabel(),
-                "unit", s.getUnit() != null ? s.getUnit() : "");
+        Map<String, Object> map = new java.util.HashMap<>();
+        map.put("id", s.getSizeId());
+        map.put("label", s.getLabel());
+        map.put("unit", s.getUnit() != null ? s.getUnit() : "");
+        if (s.getDecimalValue() != null) map.put("decimalValue", s.getDecimalValue());
+        if (s.getSizeList() != null) map.put("sizeList", s.getSizeList());
+        return map;
     }
 
     private Map<String, Object> brandToMap(ItemBrand b) {
