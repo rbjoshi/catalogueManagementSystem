@@ -1,0 +1,71 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.3'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'com.catalogue'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = '17'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    set('jjwtVersion', "0.12.3")
+    set('mapstructVersion', "1.5.5.Final")
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    
+    runtimeOnly 'org.postgresql:postgresql'
+    
+    // JWT
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+    
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    
+    // MapStruct
+    implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+    
+    // Annotation processor for Lombok and MapStruct integration
+    annotationProcessor "org.projectlombok:lombok-mapstruct-binding:0.2.0"
+
+    // PDF Generation (iText)
+    // itext7-core is a aggregator pom in maven, in gradle we might need specific modules 
+    // or use it as a platform if it's a BOM. But 7.2.5 doesn't seem to be a BOM in the usual sense.
+    // Let's use the modules directly if possible, or just try the aggregator.
+    implementation 'com.itextpdf:itext7-core:7.2.5'
+
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
