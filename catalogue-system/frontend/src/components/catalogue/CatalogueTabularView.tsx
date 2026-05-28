@@ -49,11 +49,15 @@ interface Props {
 }
 
 export default function CatalogueTabularView({ items, settings, displayFields }: Props) {
-  // Group items by itemSubType name, fallback to itemType, then 'Uncategorized'
+  // Group items by "Type - SubType"
   const groupedItems = items.reduce((acc, di) => {
-    const typeName = di.item.itemSubType?.name || di.item.itemType?.name || 'Uncategorized'
-    if (!acc[typeName]) acc[typeName] = []
-    acc[typeName].push(di)
+    const typeName = di.item.itemType?.name || 'Uncategorized'
+    const subTypeName = di.item.itemSubType?.name || 'Uncategorized'
+    const groupKey = `${typeName} - ${subTypeName}`
+    
+    if (!acc[groupKey]) acc[groupKey] = []
+    
+    acc[groupKey].push(di)
     return acc
   }, {} as Record<string, DesignerItem[]>)
 
@@ -62,9 +66,6 @@ export default function CatalogueTabularView({ items, settings, displayFields }:
 
   return (
     <div className="w-full bg-white print:bg-white text-black font-sans print:m-0 print:p-0">
-      {/* Header section - in print mode, we want this to repeat if possible, 
-          but standard HTML/CSS requires specific table header structures for repeating headers.
-          We will wrap the whole content in a table where the thead contains the company header. */}
       <table className="w-full min-w-full print:w-full border-collapse">
         <thead className="print:table-header-group">
           <tr>

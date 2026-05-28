@@ -259,7 +259,7 @@ export default function CatalogueDesignerPage() {
 
   const printRef = useRef<HTMLDivElement>(null)
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: name || 'Catalogue',
   })
 
@@ -604,15 +604,39 @@ export default function CatalogueDesignerPage() {
                   <div className="w-full bg-white print:bg-white text-black font-sans">
                     <CatalogueHeader settings={tabularSettings} />
                     <div className="mt-4 p-4">
-                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      {(() => {
+                        const groupedItems = designerItems.reduce((acc, di) => {
+                          const typeName = di.item.itemType?.name || 'Uncategorized'
+                          const subTypeName = di.item.itemSubType?.name || 'Uncategorized'
+                          const groupKey = `${typeName} - ${subTypeName}`
+                          
+                          if (!acc[groupKey]) acc[groupKey] = []
+                          
+                          acc[groupKey].push(di)
+                          return acc
+                        }, {} as Record<string, DesignerItem[]>)
+                        
+                        return (
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                         <SortableContext items={designerItems.map(d => d.id)} strategy={rectSortingStrategy}>
-                          <div className={`grid ${gridCols} gap-3`}>
-                            {designerItems.map(di => (
-                              <SortableCard key={di.id} di={di} onRemove={() => removeItem(di.id)} onUpdate={(updates) => updateItem(di.id, updates)} displayFields={displayFields} />
+                          <div className="space-y-8">
+                            {Object.entries(groupedItems).map(([groupName, groupItems]) => (
+                              <div key={groupName} className="mb-8">
+                                <h2 className="text-center font-bold text-xl mb-4 uppercase" style={{ color: tabularSettings.tableBorderColor === 'black' ? '#000000' : '#dc2626' }}>
+                                  {groupName}
+                                </h2>
+                                <div className={`grid ${gridCols} gap-3`}>
+                                  {groupItems.map(di => (
+                                    <SortableCard key={di.id} di={di} onRemove={() => removeItem(di.id)} onUpdate={(updates) => updateItem(di.id, updates)} displayFields={displayFields} />
+                                  ))}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         </SortableContext>
-                      </DndContext>
+                          </DndContext>
+                        )
+                      })()}
                     </div>
                   </div>
                 )}
