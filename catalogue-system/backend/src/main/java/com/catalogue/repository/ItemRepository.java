@@ -25,8 +25,7 @@ public interface ItemRepository extends JpaRepository<Item, UUID> {
         SELECT i FROM Item i
         WHERE i.enterprise.entId = :entId
           AND i.isActive = true
-          AND (:search IS NULL OR LOWER(i.name) LIKE LOWER(CONCAT('%', :search, '%'))
-               OR LOWER(i.sku) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND (:search IS NULL OR LOWER(i.name) LIKE :search OR LOWER(i.sku) LIKE :search)
           AND (:typeId IS NULL OR i.itemType.typeId = :typeId)
           AND (:subTypeId IS NULL OR i.itemSubType.subTypeId = :subTypeId)
           AND (:brandId IS NULL OR i.itemBrand.brandId = :brandId)

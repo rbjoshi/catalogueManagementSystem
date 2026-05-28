@@ -6,15 +6,19 @@ import type {
   Lookups,
 } from '@/types'
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────
 export const authApi = {
   register: (data: Record<string, string>) =>
     api.post<ApiResponse<AuthResponse>>('/auth/register', data).then(r => r.data),
   login: (email: string, password: string) =>
     api.post<ApiResponse<AuthResponse>>('/auth/login', { email, password }).then(r => r.data),
+  refresh: (refreshToken: string) =>
+    api.post<ApiResponse<AuthResponse>>('/auth/refresh', { refreshToken }).then(r => r.data),
+  logout: (refreshToken: string) =>
+    api.post<ApiResponse<void>>('/auth/logout', { refreshToken }).then(r => r.data),
 }
 
-// ── Items ─────────────────────────────────────────────────────────────────────
+// ── Items ─────────────────────────────────────────────────────────────────
 export const itemsApi = {
   list: (params?: Record<string, unknown>) =>
     api.get<ApiResponse<PageResponse<Item>>>('/items', { params }).then(r => r.data),
@@ -30,7 +34,7 @@ export const itemsApi = {
     api.post<ApiResponse<Item[]>>('/items/bulk', data).then(r => r.data),
 }
 
-// ── Catalogues ────────────────────────────────────────────────────────────────
+// ── Catalogues ────────────────────────────────────────────────────────────
 export const cataloguesApi = {
   list: (params?: Record<string, unknown>) =>
     api.get<ApiResponse<PageResponse<Catalogue>>>('/catalogues', { params }).then(r => r.data),
@@ -52,7 +56,7 @@ export const cataloguesApi = {
     api.get<ApiResponse<CatalogueTemplate[]>>('/catalogues/templates').then(r => r.data),
 }
 
-// ── Lookups ───────────────────────────────────────────────────────────────────
+// ── Lookups ───────────────────────────────────────────────────────────────
 export const lookupsApi = {
   getAll: () =>
     api.get<ApiResponse<Lookups>>('/lookups').then(r => r.data),
@@ -84,4 +88,15 @@ export const lookupsApi = {
     api.put<ApiResponse<unknown>>(`/lookups/brands/${id}`, { name }).then(r => r.data),
   deleteBrand: (id: number) =>
     api.delete<ApiResponse<void>>(`/lookups/brands/${id}`).then(r => r.data),
+}
+
+// ── Upload ────────────────────────────────────────────────────────────────
+export const uploadApi = {
+  uploadFile: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post<ApiResponse<{ url: string }>>('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(r => r.data)
+  }
 }

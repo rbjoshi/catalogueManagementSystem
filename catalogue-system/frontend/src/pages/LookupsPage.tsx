@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Tag, Loader2, X, Edit2, Trash2, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { lookupsApi } from '@/api/services'
+import { getImageUrl } from '@/utils/imageUrl'
 
 type Tab = 'types' | 'sizes' | 'brands'
 
@@ -31,22 +32,27 @@ export default function LookupsPage() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['lookups'] })
 
+  const onError = (error: any) => {
+    console.error(error);
+    toast.error(error?.response?.data?.message || error?.message || 'An error occurred');
+  }
+
   // Mutations
-  const createTypeMut  = useMutation({ mutationFn: lookupsApi.createType,  onSuccess: () => { invalidate(); setNewName(''); toast.success('Type created') } })
-  const updateTypeMut  = useMutation({ mutationFn: (p: {id: number, name: string}) => lookupsApi.updateType(p.id, p.name), onSuccess: () => { invalidate(); setEditingId(null); toast.success('Type updated') } })
-  const deleteTypeMut  = useMutation({ mutationFn: lookupsApi.deleteType,  onSuccess: () => { invalidate(); toast.success('Type deleted') } })
+  const createTypeMut  = useMutation({ mutationFn: (name: string) => lookupsApi.createType(name),  onSuccess: () => { invalidate(); setNewName(''); toast.success('Type created') }, onError })
+  const updateTypeMut  = useMutation({ mutationFn: (p: {id: number, name: string}) => lookupsApi.updateType(p.id, p.name), onSuccess: () => { invalidate(); setEditingId(null); toast.success('Type updated') }, onError })
+  const deleteTypeMut  = useMutation({ mutationFn: (id: number) => lookupsApi.deleteType(id),  onSuccess: () => { invalidate(); toast.success('Type deleted') }, onError })
 
-  const createSubTypeMut = useMutation({ mutationFn: (p: { typeId: number; name: string }) => lookupsApi.createSubType(p.typeId, p.name), onSuccess: () => { invalidate(); setSubTypeName(''); toast.success('Sub type created') } })
-  const updateSubTypeMut = useMutation({ mutationFn: (p: {id: number, name: string}) => lookupsApi.updateSubType(p.id, p.name), onSuccess: () => { invalidate(); setEditingId(null); toast.success('Sub type updated') } })
-  const deleteSubTypeMut = useMutation({ mutationFn: lookupsApi.deleteSubType, onSuccess: () => { invalidate(); toast.success('Sub type deleted') } })
+  const createSubTypeMut = useMutation({ mutationFn: (p: { typeId: number; name: string }) => lookupsApi.createSubType(p.typeId, p.name), onSuccess: () => { invalidate(); setSubTypeName(''); toast.success('Sub type created') }, onError })
+  const updateSubTypeMut = useMutation({ mutationFn: (p: {id: number, name: string}) => lookupsApi.updateSubType(p.id, p.name), onSuccess: () => { invalidate(); setEditingId(null); toast.success('Sub type updated') }, onError })
+  const deleteSubTypeMut = useMutation({ mutationFn: (id: number) => lookupsApi.deleteSubType(id), onSuccess: () => { invalidate(); toast.success('Sub type deleted') }, onError })
 
-  const createSizeMut  = useMutation({ mutationFn: (p: {name: string, decimalValue?: number, sizeList?: string[]}) => lookupsApi.createSize(p.name, p.decimalValue, p.sizeList),  onSuccess: () => { invalidate(); setNewName(''); setNewDecimalValue(''); setNewSizeList(''); toast.success('Size created') } })
-  const updateSizeMut  = useMutation({ mutationFn: (p: {id: number, name: string, decimalValue?: number, sizeList?: string[]}) => lookupsApi.updateSize(p.id, p.name, p.decimalValue, p.sizeList), onSuccess: () => { invalidate(); setEditingId(null); toast.success('Size updated') } })
-  const deleteSizeMut  = useMutation({ mutationFn: lookupsApi.deleteSize,  onSuccess: () => { invalidate(); toast.success('Size deleted') } })
+  const createSizeMut  = useMutation({ mutationFn: (p: {name: string, decimalValue?: number, sizeList?: string[]}) => lookupsApi.createSize(p.name, p.decimalValue, p.sizeList),  onSuccess: () => { invalidate(); setNewName(''); setNewDecimalValue(''); setNewSizeList(''); toast.success('Size created') }, onError })
+  const updateSizeMut  = useMutation({ mutationFn: (p: {id: number, name: string, decimalValue?: number, sizeList?: string[]}) => lookupsApi.updateSize(p.id, p.name, p.decimalValue, p.sizeList), onSuccess: () => { invalidate(); setEditingId(null); toast.success('Size updated') }, onError })
+  const deleteSizeMut  = useMutation({ mutationFn: (id: number) => lookupsApi.deleteSize(id),  onSuccess: () => { invalidate(); toast.success('Size deleted') }, onError })
 
-  const createBrandMut = useMutation({ mutationFn: lookupsApi.createBrand, onSuccess: () => { invalidate(); setNewName(''); toast.success('Brand created') } })
-  const updateBrandMut = useMutation({ mutationFn: (p: {id: number, name: string}) => lookupsApi.updateBrand(p.id, p.name), onSuccess: () => { invalidate(); setEditingId(null); toast.success('Brand updated') } })
-  const deleteBrandMut = useMutation({ mutationFn: lookupsApi.deleteBrand, onSuccess: () => { invalidate(); toast.success('Brand deleted') } })
+  const createBrandMut = useMutation({ mutationFn: (name: string) => lookupsApi.createBrand(name), onSuccess: () => { invalidate(); setNewName(''); toast.success('Brand created') }, onError })
+  const updateBrandMut = useMutation({ mutationFn: (p: {id: number, name: string}) => lookupsApi.updateBrand(p.id, p.name), onSuccess: () => { invalidate(); setEditingId(null); toast.success('Brand updated') }, onError })
+  const deleteBrandMut = useMutation({ mutationFn: (id: number) => lookupsApi.deleteBrand(id), onSuccess: () => { invalidate(); toast.success('Brand deleted') }, onError })
 
   const lookups = data?.data
 
@@ -299,7 +305,7 @@ export default function LookupsPage() {
                     <div key={b.id} className="flex items-center justify-between px-4 py-3 border-b border-slate-50 group">
                       <div className="flex items-center gap-3 flex-1">
                         {b.logoUrl ? (
-                          <img src={b.logoUrl} alt={b.name} className="w-6 h-6 object-contain rounded" />
+                          <img src={getImageUrl(b.logoUrl)} alt={b.name} className="w-6 h-6 object-contain rounded" />
                         ) : (
                           <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center">
                             <span className="text-xs text-slate-400">{b.name[0]}</span>

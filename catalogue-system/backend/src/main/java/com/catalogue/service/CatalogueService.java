@@ -2,6 +2,7 @@ package com.catalogue.service;
 
 import com.catalogue.dto.request.CatalogueRequest;
 import com.catalogue.dto.response.CatalogueResponse;
+import com.catalogue.dto.response.CatalogueItemResponse;
 import com.catalogue.dto.response.PdfJobResponse;
 import com.catalogue.entity.*;
 import com.catalogue.exception.BadRequestException;
@@ -34,6 +35,7 @@ public class CatalogueService {
     private final ItemRepository itemRepository;
     private final PdfJobRepository pdfJobRepository;
     private final PdfService pdfService;
+    private final ItemService itemService;
 
     @Transactional
     @CacheEvict(value = "catalogues", key = "#entId")
@@ -97,10 +99,10 @@ public class CatalogueService {
         return toResponse(catalogueRepository.save(catalogue));
     }
 
-    @Cacheable(value = "catalogues", key = "#entId + '-' + #pageable.pageNumber")
     public Page<CatalogueResponse> getCatalogues(String entId, Catalogue.Status status,
                                                   String search, Pageable pageable) {
-        return catalogueRepository.searchCatalogues(entId, status, search, pageable)
+        String searchTerm = (search != null && !search.isBlank()) ? "%" + search.toLowerCase() + "%" : null;
+        return catalogueRepository.searchCatalogues(entId, status, searchTerm, pageable)
                 .map(this::toResponse);
     }
 
@@ -128,7 +130,6 @@ public class CatalogueService {
         catalogueRepository.save(catalogue);
     }
 
-    @Transactional
     public PdfJobResponse requestPdfExport(String entId, UUID catId, UUID userId) {
         Catalogue catalogue = catalogueRepository.findByCatIdAndEnterpriseEntId(catId, entId)
                 .orElseThrow(() -> new ResourceNotFoundException("Catalogue not found"));
@@ -177,6 +178,18 @@ public class CatalogueService {
     }
 
     private CatalogueResponse toResponse(Catalogue c) {
+        List<CatalogueItemResponse> itemResponses = c.getCatalogueItems().stream()
+                .map(ci -> CatalogueItemResponse.builder()
+                        .item(itemService.toResponse(ci.getItem()))
+                        .pageNumber(ci.getPageNumber())
+                        .position(ci.getPosition())
+                        .customName(ci.getCustomName())
+                        .customPrice(ci.getCustomPrice())
+                        .customDesc(ci.getCustomDesc())
+                        .customOverrides(ci.getCustomOverrides())
+                        .build())
+                .collect(Collectors.toList());
+
         return CatalogueResponse.builder()
                 .catId(c.getCatId())
                 .entId(c.getEnterprise().getEntId())
@@ -194,6 +207,7 @@ public class CatalogueService {
                 .publishedAt(c.getPublishedAt())
                 .createdAt(c.getCreatedAt())
                 .updatedAt(c.getUpdatedAt())
+                .items(itemResponses)
                 .build();
     }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, BookOpen, Edit2, Trash2, Globe, Loader2, FileDown, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -16,8 +16,8 @@ const STATUS_TABS: Array<{ label: string; value: CatalogueStatus | '' }> = [
 export default function CataloguesPage() {
   const qc = useQueryClient()
   const [status, setStatus] = useState<CatalogueStatus | ''>('')
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [pdfJobId, setPdfJobId] = useState<Record<string, string>>({})
 
   const { data, isLoading } = useQuery({
     queryKey: ['catalogues', status, search],
@@ -32,14 +32,6 @@ export default function CataloguesPage() {
   const deleteMutation = useMutation({
     mutationFn: cataloguesApi.delete,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['catalogues'] }); toast.success('Catalogue archived') },
-  })
-
-  const exportMutation = useMutation({
-    mutationFn: cataloguesApi.exportPdf,
-    onSuccess: (res, catId) => {
-      setPdfJobId(prev => ({ ...prev, [catId]: res.data.jobId }))
-      toast.success('PDF export started! Check back shortly.')
-    },
   })
 
   const catalogues = data?.data?.content ?? []
@@ -140,8 +132,10 @@ export default function CataloguesPage() {
                   </button>
                 )}
                 <button
-                  onClick={() => exportMutation.mutate(cat.catId)}
-                  disabled={exportMutation.isPending}
+                  onClick={() => {
+                    navigate(`/catalogues/${cat.catId}`)
+                    setTimeout(() => toast('Click "Export PDF" in the top bar to generate the document.', { icon: '🖨️' }), 500)
+                  }}
                   className="btn-ghost btn-sm p-1.5"
                   title="Export PDF"
                 >
@@ -155,11 +149,6 @@ export default function CataloguesPage() {
                 </button>
               </div>
 
-              {pdfJobId[cat.catId] && (
-                <p className="text-xs text-brand-600 bg-brand-50 px-2 py-1 rounded">
-                  Job ID: <code className="font-mono">{pdfJobId[cat.catId].slice(0, 8)}…</code>
-                </p>
-              )}
             </div>
           ))}
         </div>

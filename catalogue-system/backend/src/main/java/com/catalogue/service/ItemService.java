@@ -57,11 +57,11 @@ public class ItemService {
         return toResponse(item);
     }
 
-    @Cacheable(value = "items", key = "#entId + '-' + #pageable.pageNumber")
     public Page<ItemResponse> getItems(String entId, String search, Integer typeId,
                                        Integer subTypeId, Integer brandId, Integer sizeId,
                                        Pageable pageable) {
-        Page<Item> items = itemRepository.searchItems(entId, search, typeId, subTypeId, brandId, sizeId, pageable);
+        String searchTerm = (search != null && !search.isBlank()) ? "%" + search.toLowerCase() + "%" : null;
+        Page<Item> items = itemRepository.searchItems(entId, searchTerm, typeId, subTypeId, brandId, sizeId, pageable);
         return items.map(this::toResponse);
     }
 

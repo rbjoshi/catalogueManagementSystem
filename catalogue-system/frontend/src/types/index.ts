@@ -8,6 +8,7 @@ export interface UserInfo {
   role: 'OWNER' | 'ADMIN' | 'EDITOR' | 'VIEWER'
   entId: string
   companyName: string
+  logoUrl?: string
 }
 
 export interface AuthResponse {
@@ -100,6 +101,7 @@ export interface Catalogue {
   publishedAt?: string
   createdAt: string
   updatedAt: string
+  items?: CatalogueItemSlot[]
 }
 
 export interface CatalogueTemplate {
@@ -111,7 +113,7 @@ export interface CatalogueTemplate {
 }
 
 export interface CatalogueItemSlot {
-  itemId: string
+  item: Item
   pageNumber: number
   position: number
   customName?: string

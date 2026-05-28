@@ -22,7 +22,7 @@ public interface CatalogueRepository extends JpaRepository<Catalogue, UUID> {
         SELECT c FROM Catalogue c
         WHERE c.enterprise.entId = :entId
           AND (:status IS NULL OR c.status = :status)
-          AND (:search IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND (:search IS NULL OR LOWER(c.name) LIKE :search)
         ORDER BY c.createdAt DESC
     """)
     Page<Catalogue> searchCatalogues(

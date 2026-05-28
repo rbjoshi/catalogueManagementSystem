@@ -71,3 +71,24 @@
   }
   .page-title { @apply text-xl font-semibold text-slate-900; }
 }
+
+@media print {
+  @page {
+    margin: 1cm;
+  }
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: white !important;
+  }
+  .print-wrapper {
+    margin: 0;
+    padding: 0;
+  }
+  button {
+    display: none !important;
+  }
+  .card {
+    break-inside: avoid;
+  }
+}

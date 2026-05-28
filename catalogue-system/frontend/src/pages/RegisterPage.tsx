@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { BookOpen, Loader2, Building2, User } from 'lucide-react'
-import { authApi } from '@/api/services'
+import { BookOpen, Loader2, Building2, User, Upload } from 'lucide-react'
+import { authApi, uploadApi } from '@/api/services'
 import { useAuthStore } from '@/store/authStore'
 
 const schema = z.object({
@@ -24,6 +24,7 @@ export default function RegisterPage() {
   const { setAuth } = useAuthStore()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -32,9 +33,16 @@ export default function RegisterPage() {
   const onSubmit = async (data: FormData) => {
     setLoading(true)
     try {
-      const res = await authApi.register(data as Record<string, string>)
+      let companyLogoUrl = ''
+      if (logoFile) {
+        const uploadRes = await uploadApi.uploadFile(logoFile)
+        companyLogoUrl = uploadRes.data.url
+      }
+
+      const payload = { ...data, companyLogoUrl }
+      const res = await authApi.register(payload as Record<string, string>)
       if (res.success) {
-        setAuth(res.data.accessToken, res.data.user)
+        setAuth(res.data.accessToken, res.data.refreshToken, res.data.user)
         toast.success('Enterprise registered successfully!')
         navigate('/dashboard')
       }
@@ -79,6 +87,36 @@ export default function RegisterPage() {
                 <div className="form-group">
                   <label className="label">Company Email</label>
                   <input {...register('companyEmail')} type="email" className="input" placeholder="info@acme.com" />
+                </div>
+                <div className="col-span-2 form-group">
+                  <label className="label">Company Logo</label>
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer flex items-center justify-center w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 hover:border-brand-500 hover:bg-brand-50 transition-colors">
+                      {logoFile ? (
+                        <img src={URL.createObjectURL(logoFile)} alt="Logo Preview" className="w-full h-full object-contain rounded-xl p-1" />
+                      ) : (
+                        <div className="flex flex-col items-center text-slate-400">
+                          <Upload size={20} className="mb-1" />
+                          <span className="text-[10px] font-medium uppercase tracking-wider">Upload</span>
+                        </div>
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setLogoFile(e.target.files[0])
+                          }
+                        }} 
+                      />
+                    </label>
+                    <div className="text-sm text-slate-500">
+                      <p className="font-medium text-slate-700">Logo Image</p>
+                      <p>PNG, JPG up to 5MB.</p>
+                      <p>Will be used in your PDF catalogues.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

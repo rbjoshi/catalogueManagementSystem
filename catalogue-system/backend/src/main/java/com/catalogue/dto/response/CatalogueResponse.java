@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,4 +27,5 @@ public class CatalogueResponse {
     private ZonedDateTime publishedAt;
     private ZonedDateTime createdAt;
     private ZonedDateTime updatedAt;
+    private List<CatalogueItemResponse> items;
 }

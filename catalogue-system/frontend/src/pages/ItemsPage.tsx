@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { itemsApi, lookupsApi } from '@/api/services'
 import type { Item } from '@/types'
 import clsx from 'clsx'
+import { getImageUrl } from '@/utils/imageUrl'
 
 export default function ItemsPage() {
   const qc = useQueryClient()
@@ -119,7 +120,7 @@ export default function ItemsPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {item.images?.[0]?.url ? (
-                        <img src={item.images[0].url} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-100" />
+                        <img src={getImageUrl(item.images[0].url)} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-100" />
                       ) : (
                         <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
                           <Package size={14} className="text-slate-400" />

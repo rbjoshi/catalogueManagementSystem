@@ -27,7 +27,8 @@ public class JwtService {
     private long refreshExpiration;
 
     private SecretKey getSigningKey() {
-        return Keys.secretKeyFor(SignatureAlgorithm.HS256);
+        byte[] keyBytes = jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String generateToken(UUID userId, String email, String entId, String role) {

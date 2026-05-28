@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -13,11 +14,15 @@ import { CSS } from '@dnd-kit/utilities'
 import { KeyboardSensor } from '@dnd-kit/core'
 import {
   ArrowLeft, Save, Loader2, Plus, X, GripVertical,
-  Package, Globe, FileDown, Settings2,
+  Package, Globe, FileDown, Settings2, LayoutGrid, List, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { cataloguesApi, itemsApi, lookupsApi } from '@/api/services'
+import { cataloguesApi, itemsApi, lookupsApi, uploadApi } from '@/api/services'
 import type { Item, CatalogueTemplate } from '@/types'
+import { useAuthStore } from '@/store/authStore'
+import CatalogueTabularView from '@/components/catalogue/CatalogueTabularView'
+import CatalogueHeader from '@/components/catalogue/CatalogueHeader'
+import { getImageUrl } from '@/utils/imageUrl'
 
 interface DesignerItem {
   id: string       // item.itemId
@@ -26,11 +31,33 @@ interface DesignerItem {
   pageNumber: number
   customName?: string
   customPrice?: number
+  customOverrides?: Record<string, any>
 }
 
-function SortableCard({ di, onRemove }: { di: DesignerItem; onRemove: () => void }) {
+interface DisplayFields {
+  name: boolean
+  price: boolean
+  sku: boolean
+  size: boolean
+  brand: boolean
+  description: boolean
+}
+
+function SortableCard({ di, onRemove, onUpdate, displayFields }: { di: DesignerItem; onRemove: () => void; onUpdate: (updates: Partial<DesignerItem>) => void; displayFields: DisplayFields }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: di.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
+
+  const currentImgUrl = di.customOverrides?.imageUrl || di.item.images?.[0]?.url
+  const hasMultipleImages = (di.item.images?.length || 0) > 1
+
+  const cycleImage = (direction: 1 | -1) => {
+    if (!di.item.images) return
+    const currentIdx = di.item.images.findIndex(img => img.url === currentImgUrl)
+    const idx = currentIdx >= 0 ? currentIdx : 0
+    let nextIdx = (idx + direction) % di.item.images.length
+    if (nextIdx < 0) nextIdx = di.item.images.length - 1
+    onUpdate({ customOverrides: { ...(di.customOverrides || {}), imageUrl: di.item.images[nextIdx].url } })
+  }
 
   return (
     <div ref={setNodeRef} style={style} className="card p-3 flex flex-col gap-2 relative group">
@@ -39,17 +66,39 @@ function SortableCard({ di, onRemove }: { di: DesignerItem; onRemove: () => void
           <GripVertical size={14} />
         </button>
         <div className="flex-1 min-w-0">
-          {di.item.images?.[0]?.url ? (
-            <img src={di.item.images[0].url} alt="" className="w-full h-24 object-cover rounded-lg mb-2 border border-slate-100" />
+          {currentImgUrl ? (
+            <div className="relative w-full h-24 mb-2 group/img">
+              <img src={getImageUrl(currentImgUrl)} alt="" className="w-full h-full object-cover rounded-lg border border-slate-100" />
+              {hasMultipleImages && (
+                <>
+                  <button onClick={() => cycleImage(-1)} className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/img:opacity-100 bg-white/90 p-0.5 rounded-full text-slate-700 hover:bg-white shadow-sm transition-opacity"><ChevronLeft size={14}/></button>
+                  <button onClick={() => cycleImage(1)} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/img:opacity-100 bg-white/90 p-0.5 rounded-full text-slate-700 hover:bg-white shadow-sm transition-opacity"><ChevronRight size={14}/></button>
+                </>
+              )}
+            </div>
           ) : (
             <div className="w-full h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center">
               <Package size={20} className="text-slate-300" />
             </div>
           )}
-          <p className="text-xs font-medium text-slate-700 leading-tight truncate">
-            {di.customName ?? di.item.name}
-          </p>
-          {di.item.price != null && (
+          {displayFields.name && (
+            <p className="text-xs font-medium text-slate-700 leading-tight truncate">
+              {di.customName ?? di.item.name}
+            </p>
+          )}
+          {displayFields.sku && di.item.sku && (
+            <p className="text-xs text-slate-400 mt-0.5">SKU: {di.item.sku}</p>
+          )}
+          {displayFields.size && di.item.itemSize && (
+            <p className="text-xs text-slate-400 mt-0.5">Size: {di.item.itemSize.label} {di.item.itemSize.unit || ''}</p>
+          )}
+          {displayFields.brand && di.item.itemBrand && (
+            <p className="text-xs text-slate-400 mt-0.5">Brand: {di.item.itemBrand.name}</p>
+          )}
+          {displayFields.description && (di.item.shortDesc || di.item.description) && (
+            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{di.item.shortDesc || di.item.description}</p>
+          )}
+          {displayFields.price && di.item.price != null && (
             <p className="text-xs text-brand-600 font-semibold mt-0.5">
               {di.item.currency} {(di.customPrice ?? di.item.price).toLocaleString()}
             </p>
@@ -71,7 +120,9 @@ export default function CatalogueDesignerPage() {
   const isEdit = !!id
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { user } = useAuthStore()
 
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [pageSize, setPageSize] = useState('A4')
@@ -80,6 +131,35 @@ export default function CatalogueDesignerPage() {
   const [designerItems, setDesignerItems] = useState<DesignerItem[]>([])
   const [itemSearch, setItemSearch] = useState('')
   const [showItemPicker, setShowItemPicker] = useState(false)
+  const [catalogueStyle, setCatalogueStyle] = useState<'GRID' | 'TABULAR'>('GRID')
+  const [displayFields, setDisplayFields] = useState<DisplayFields>({
+    name: true,
+    price: true,
+    sku: true,
+    size: true,
+    brand: true,
+    description: false,
+  })
+  const [tabularSettings, setTabularSettings] = useState({
+    logoUrl: user?.logoUrl || '',
+    companyName: user?.companyName || '',
+    phone: '',
+    mobile: '',
+    email: '',
+    website: '',
+    address: '',
+    headerFontSize: 24,
+    headerColor: '#000000',
+    logoSize: 64,
+    tableBorderColor: 'red',
+    headerSku: 'SKU',
+    headerName: 'MODEL NO.',
+    headerDesc: 'DESCRIPTION',
+    headerSize: 'SIZE',
+    headerBrand: 'BRAND',
+    headerPrice: 'PRICE'
+  })
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -105,15 +185,32 @@ export default function CatalogueDesignerPage() {
 
   // Populate form when editing
   useEffect(() => {
-    if (catData?.data) {
+    if (catData?.data && !hasLoaded) {
       const c = catData.data
       setName(c.name)
       setDescription(c.description ?? '')
       setPageSize(c.pageSize)
       setOrientation(c.orientation)
       setSelectedTemplateId(c.templateId)
+      if (c.layoutJson) {
+        if (c.layoutJson.style) setCatalogueStyle(c.layoutJson.style as 'GRID' | 'TABULAR')
+        if (c.layoutJson.tabularSettings) setTabularSettings({ ...tabularSettings, ...(c.layoutJson.tabularSettings as any) })
+        if (c.layoutJson.displayFields) setDisplayFields(c.layoutJson.displayFields as DisplayFields)
+      }
+      if (c.items) {
+        setDesignerItems(c.items.map(ci => ({
+          id: ci.item.itemId,
+          item: ci.item,
+          position: ci.position,
+          pageNumber: ci.pageNumber,
+          customName: ci.customName,
+          customPrice: ci.customPrice,
+          customOverrides: ci.customOverrides,
+        })))
+      }
+      setHasLoaded(true)
     }
-  }, [catData])
+  }, [catData, hasLoaded, tabularSettings])
 
   // DnD
   const handleDragEnd = (e: DragEndEvent) => {
@@ -144,6 +241,10 @@ export default function CatalogueDesignerPage() {
     setDesignerItems(prev => prev.filter(d => d.id !== itemId))
   }
 
+  const updateItem = (itemId: string, updates: Partial<DesignerItem>) => {
+    setDesignerItems(prev => prev.map(d => d.id === itemId ? { ...d, ...updates } : d))
+  }
+
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
@@ -156,11 +257,10 @@ export default function CatalogueDesignerPage() {
     onError: () => toast.error('Save failed'),
   })
 
-  const exportMutation = useMutation({
-    mutationFn: () => cataloguesApi.exportPdf(id!),
-    onSuccess: (res) => {
-      toast.success(`PDF export started — Job ID: ${res.data.jobId.slice(0, 8)}…`)
-    },
+  const printRef = useRef<HTMLDivElement>(null)
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    documentTitle: name || 'Catalogue',
   })
 
   const publishMutation = useMutation({
@@ -176,13 +276,21 @@ export default function CatalogueDesignerPage() {
       pageSize,
       orientation,
       templateId: selectedTemplateId,
-      layoutJson: { columns: getColumns(), rows: 4, templateId: selectedTemplateId },
+      layoutJson: { 
+        columns: getColumns(), 
+        rows: 4, 
+        templateId: selectedTemplateId,
+        style: catalogueStyle,
+        displayFields,
+        tabularSettings: catalogueStyle === 'TABULAR' ? tabularSettings : undefined
+      },
       items: designerItems.map(d => ({
         itemId: d.id,
         pageNumber: d.pageNumber,
         position: d.position,
         customName: d.customName,
         customPrice: d.customPrice,
+        customOverrides: d.customOverrides,
       })),
     })
   }
@@ -208,8 +316,8 @@ export default function CatalogueDesignerPage() {
         <div className="flex items-center gap-2">
           {isEdit && (
             <>
-              <button onClick={() => exportMutation.mutate()} disabled={exportMutation.isPending} className="btn-secondary btn-sm">
-                {exportMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+              <button onClick={handlePrint} className="btn-secondary btn-sm">
+                <FileDown size={14} />
                 Export PDF
               </button>
               <button onClick={() => publishMutation.mutate()} disabled={publishMutation.isPending} className="btn-secondary btn-sm">
@@ -235,6 +343,15 @@ export default function CatalogueDesignerPage() {
             </div>
             <div className="space-y-3">
               <div>
+                <label className="label text-xs">Catalogue Name <span className="text-red-500">*</span></label>
+                <input 
+                  value={name} 
+                  onChange={e => setName(e.target.value)}
+                  className="input text-sm" 
+                  placeholder="e.g. Summer Collection"
+                />
+              </div>
+              <div>
                 <label className="label text-xs">Description</label>
                 <textarea value={description} onChange={e => setDescription(e.target.value)}
                   rows={2} className="input text-sm resize-none" placeholder="Optional description" />
@@ -257,8 +374,161 @@ export default function CatalogueDesignerPage() {
             </div>
           </div>
 
-          {/* Templates */}
+          {/* Style Toggle */}
           <div className="card p-4">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Style</h3>
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              <button 
+                onClick={() => setCatalogueStyle('GRID')}
+                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-colors ${catalogueStyle === 'GRID' ? 'bg-white shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <LayoutGrid size={14} /> Grid
+              </button>
+              <button 
+                onClick={() => setCatalogueStyle('TABULAR')}
+                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-colors ${catalogueStyle === 'TABULAR' ? 'bg-white shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <List size={14} /> Tabular
+              </button>
+            </div>
+          </div>
+
+          {/* Header & Table Settings */}
+          <div className="card p-4">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Header Settings</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="label text-xs">Company Name</label>
+                  <input 
+                    value={tabularSettings.companyName} 
+                    onChange={e => setTabularSettings({...tabularSettings, companyName: e.target.value})} 
+                    className="input text-sm" 
+                  />
+                </div>
+                <div>
+                  <label className="label text-xs">Custom Logo (File)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    className="input text-sm p-1" 
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setUploadingLogo(true)
+                        try {
+                          const res = await uploadApi.uploadFile(e.target.files[0])
+                          setTabularSettings({...tabularSettings, logoUrl: res.data.url})
+                        } catch (err) {
+                          toast.error('Logo upload failed')
+                        } finally {
+                          setUploadingLogo(false)
+                        }
+                      }
+                    }}
+                  />
+                  {uploadingLogo && <p className="text-xs text-brand-500 mt-1">Uploading...</p>}
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="label text-xs">Font Size</label>
+                    <input 
+                      type="number" 
+                      value={tabularSettings.headerFontSize} 
+                      onChange={e => setTabularSettings({...tabularSettings, headerFontSize: Number(e.target.value)})} 
+                      className="input text-sm" 
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="label text-xs">Color</label>
+                    <input 
+                      type="color" 
+                      value={tabularSettings.headerColor} 
+                      onChange={e => setTabularSettings({...tabularSettings, headerColor: e.target.value})} 
+                      className="w-full h-9 rounded cursor-pointer" 
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="label text-xs">Logo Size (px)</label>
+                  <input 
+                    type="number" 
+                    value={tabularSettings.logoSize} 
+                    onChange={e => setTabularSettings({...tabularSettings, logoSize: Number(e.target.value)})} 
+                    className="input text-sm" 
+                  />
+                </div>
+                <div>
+                  <label className="label text-xs">Address</label>
+                  <textarea 
+                    value={tabularSettings.address} 
+                    onChange={e => setTabularSettings({...tabularSettings, address: e.target.value})} 
+                    rows={2} 
+                    className="input text-sm resize-none" 
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="label text-xs">Phone</label>
+                    <input 
+                      value={tabularSettings.phone} 
+                      onChange={e => setTabularSettings({...tabularSettings, phone: e.target.value})} 
+                      className="input text-sm" 
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="label text-xs">Mobile</label>
+                    <input 
+                      value={tabularSettings.mobile} 
+                      onChange={e => setTabularSettings({...tabularSettings, mobile: e.target.value})} 
+                      className="input text-sm" 
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="label text-xs">Email</label>
+                    <input 
+                      value={tabularSettings.email} 
+                      onChange={e => setTabularSettings({...tabularSettings, email: e.target.value})} 
+                      className="input text-sm" 
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="label text-xs">Website</label>
+                    <input 
+                      value={tabularSettings.website} 
+                      onChange={e => setTabularSettings({...tabularSettings, website: e.target.value})} 
+                      className="input text-sm" 
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="label text-xs">Table Border</label>
+                  <select 
+                    value={tabularSettings.tableBorderColor} 
+                    onChange={e => setTabularSettings({...tabularSettings, tableBorderColor: e.target.value})} 
+                    className="input text-sm"
+                  >
+                    <option value="red">Red</option>
+                    <option value="black">Black</option>
+                  </select>
+                </div>
+                <div className="pt-2 border-t border-slate-100">
+                  <label className="label text-xs font-semibold mb-2">Column Headers</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={tabularSettings.headerSku} onChange={e => setTabularSettings({...tabularSettings, headerSku: e.target.value})} className="input text-xs" placeholder="SKU" />
+                    <input value={tabularSettings.headerName} onChange={e => setTabularSettings({...tabularSettings, headerName: e.target.value})} className="input text-xs" placeholder="MODEL NO." />
+                    <input value={tabularSettings.headerDesc} onChange={e => setTabularSettings({...tabularSettings, headerDesc: e.target.value})} className="input text-xs" placeholder="DESCRIPTION" />
+                    <input value={tabularSettings.headerSize} onChange={e => setTabularSettings({...tabularSettings, headerSize: e.target.value})} className="input text-xs" placeholder="SIZE" />
+                    <input value={tabularSettings.headerBrand} onChange={e => setTabularSettings({...tabularSettings, headerBrand: e.target.value})} className="input text-xs" placeholder="BRAND" />
+                    <input value={tabularSettings.headerPrice} onChange={e => setTabularSettings({...tabularSettings, headerPrice: e.target.value})} className="input text-xs" placeholder="PRICE" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          {/* Templates - Only show for GRID */}
+          {catalogueStyle === 'GRID' && (
+            <div className="card p-4">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">Template</h3>
             <div className="space-y-2">
               {templates?.data?.map((t: CatalogueTemplate) => (
@@ -274,6 +544,25 @@ export default function CatalogueDesignerPage() {
                   <p className="font-medium">{t.name}</p>
                   <p className="text-xs opacity-70 mt-0.5">{t.layoutConfig.columns}×{t.layoutConfig.rows} · {t.pageSize}</p>
                 </button>
+              ))}
+            </div>
+          </div>
+          )}
+
+          {/* Display Fields */}
+          <div className="card p-4">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Display Fields</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(displayFields).map(([key, value]) => (
+                <label key={key} className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={value} 
+                    onChange={e => setDisplayFields({ ...displayFields, [key]: e.target.checked as boolean })}
+                    className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  <span className="capitalize">{key}</span>
+                </label>
               ))}
             </div>
           </div>
@@ -308,15 +597,26 @@ export default function CatalogueDesignerPage() {
                 </button>
               </div>
             ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={designerItems.map(d => d.id)} strategy={rectSortingStrategy}>
-                  <div className={`grid ${gridCols} gap-3`}>
-                    {designerItems.map(di => (
-                      <SortableCard key={di.id} di={di} onRemove={() => removeItem(di.id)} />
-                    ))}
+              <div ref={printRef} className="print-wrapper bg-white w-full">
+                {catalogueStyle === 'TABULAR' ? (
+                  <CatalogueTabularView items={designerItems} settings={tabularSettings} displayFields={displayFields} />
+                ) : (
+                  <div className="w-full bg-white print:bg-white text-black font-sans">
+                    <CatalogueHeader settings={tabularSettings} />
+                    <div className="mt-4 p-4">
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={designerItems.map(d => d.id)} strategy={rectSortingStrategy}>
+                          <div className={`grid ${gridCols} gap-3`}>
+                            {designerItems.map(di => (
+                              <SortableCard key={di.id} di={di} onRemove={() => removeItem(di.id)} onUpdate={(updates) => updateItem(di.id, updates)} displayFields={displayFields} />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    </div>
                   </div>
-                </SortableContext>
-              </DndContext>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -358,7 +658,7 @@ export default function CatalogueDesignerPage() {
                     >
                       <div className="flex items-center gap-2.5">
                         {item.images?.[0]?.url ? (
-                          <img src={item.images[0].url} alt="" className="w-10 h-10 rounded-lg object-cover border border-slate-100" />
+                          <img src={getImageUrl(item.images[0].url)} alt="" className="w-10 h-10 rounded-lg object-cover border border-slate-100" />
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
                             <Package size={14} className="text-slate-300" />

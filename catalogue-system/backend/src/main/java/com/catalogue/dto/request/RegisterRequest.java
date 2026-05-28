@@ -14,6 +14,7 @@ public class RegisterRequest {
     private String companyEmail;
     private String companyPhone;
     private String companyAddress;
+    private String companyLogoUrl;
 
     @NotBlank(message = "Username is required")
     @Size(min = 3, max = 100)

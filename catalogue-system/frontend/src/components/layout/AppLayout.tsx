@@ -4,6 +4,7 @@ import {
   LogOut, ChevronRight, Building2, Tag,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { authApi } from '@/api/services'
 import clsx from 'clsx'
 
 const nav = [
@@ -14,10 +15,20 @@ const nav = [
 ]
 
 export default function AppLayout() {
-  const { user, logout } = useAuthStore()
+  const { user, refreshToken, logout } = useAuthStore()
   const navigate = useNavigate()
 
-  const handleLogout = () => { logout(); navigate('/login') }
+  const handleLogout = async () => {
+    if (refreshToken) {
+      try {
+        await authApi.logout(refreshToken)
+      } catch (err) {
+        console.error('Logout failed', err)
+      }
+    }
+    logout()
+    navigate('/login')
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">

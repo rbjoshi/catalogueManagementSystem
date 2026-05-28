@@ -28,7 +28,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(data.email, data.password)
       if (res.success) {
-        setAuth(res.data.accessToken, res.data.user)
+        setAuth(res.data.accessToken, res.data.refreshToken, res.data.user)
         toast.success('Welcome back!')
         navigate('/dashboard')
       }
@@ -41,7 +41,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-slate-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-sm">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shadow-md">
@@ -63,7 +63,7 @@ export default function LoginPage() {
 
             <div className="form-group">
               <label className="label">Password</label>
-              <input {...register('password')} type="password" className={`input ${errors.password ? 'input-error' : ''}`} placeholder="••••••••" />
+              <input {...register('password')} type="password" className={`input ${errors.password ? 'input-error' : ''}`} placeholder="••••••••" />        
               {errors.password && <p className="field-error">{errors.password.message}</p>}
             </div>
 

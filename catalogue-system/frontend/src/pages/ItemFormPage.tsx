@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -6,8 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Loader2, Save } from 'lucide-react'
-import { itemsApi, lookupsApi } from '@/api/services'
+import { itemsApi, lookupsApi, uploadApi } from '@/api/services'
 import type { ItemRequest } from '@/types'
+import { getImageUrl } from '@/utils/imageUrl'
 
 const schema = z.object({
   name:         z.string().min(1, 'Name is required'),
@@ -40,6 +41,8 @@ export default function ItemFormPage() {
   const isEdit = !!id
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const [itemImage, setItemImage] = useState<File | null>(null)
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null)
 
   const { data: lookups } = useQuery({ queryKey: ['lookups'], queryFn: () => lookupsApi.getAll() })
   const { data: itemData, isLoading: loadingItem } = useQuery({
@@ -69,6 +72,9 @@ export default function ItemFormPage() {
         barcode: i.barcode ?? '', stockQty: i.stockQty ?? 0,
         isActive: i.isActive, tagsRaw: i.tags?.join(', ') ?? '',
       })
+      if (i.images && i.images.length > 0) {
+        setExistingImageUrl(i.images[0].url)
+      }
     }
   }, [itemData, reset])
 
@@ -86,10 +92,23 @@ export default function ItemFormPage() {
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Save failed'),
   })
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
     const { tagsRaw, ...rest } = data
+    
+    let imageUrl = existingImageUrl
+    if (itemImage) {
+      try {
+        const uploadRes = await uploadApi.uploadFile(itemImage)
+        imageUrl = uploadRes.data.url
+      } catch (e) {
+        toast.error('Image upload failed')
+        return
+      }
+    }
+
     const payload: ItemRequest = {
       ...rest,
+      images: imageUrl ? [{ url: imageUrl, isPrimary: true, sortOrder: 1 }] : [],
       tags: tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
     }
     mutation.mutate(payload)
@@ -141,6 +160,38 @@ export default function ItemFormPage() {
             <div className="col-span-2 form-group">
               <label className="label">Full Description</label>
               <textarea {...register('description')} rows={3} className="input resize-none" placeholder="Detailed description…" />
+            </div>
+          </div>
+        </div>
+
+        {/* Image */}
+        <div className="card p-6">
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">Item Image</h2>
+          <div className="form-group">
+            <div className="flex items-center gap-4">
+              <label className="cursor-pointer flex items-center justify-center w-32 h-32 rounded-xl border-2 border-dashed border-slate-300 hover:border-brand-500 hover:bg-brand-50 transition-colors bg-slate-50 relative overflow-hidden">
+                {itemImage ? (
+                  <img src={URL.createObjectURL(itemImage)} alt="Preview" className="w-full h-full object-cover" />
+                ) : existingImageUrl ? (
+                  <img src={getImageUrl(existingImageUrl)} alt="Existing" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-slate-400 font-medium text-sm">Upload Image</div>
+                )}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setItemImage(e.target.files[0])
+                    }
+                  }} 
+                />
+              </label>
+              <div className="text-sm text-slate-500">
+                <p>Upload a primary product image.</p>
+                <p>Visible in catalogues.</p>
+              </div>
             </div>
           </div>
         </div>

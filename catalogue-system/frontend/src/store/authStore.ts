@@ -4,9 +4,10 @@ import type { UserInfo } from '@/types'
 
 interface AuthState {
   token: string | null
+  refreshToken: string | null
   user: UserInfo | null
   isAuthenticated: boolean
-  setAuth: (token: string, user: UserInfo) => void
+  setAuth: (token: string, refreshToken: string, user: UserInfo) => void
   logout: () => void
 }
 
@@ -14,10 +15,11 @@ export const useAuthStore = create<AuthState>()(
   persist(
     set => ({
       token: null,
+      refreshToken: null,
       user: null,
       isAuthenticated: false,
-      setAuth: (token, user) => set({ token, user, isAuthenticated: true }),
-      logout: () => set({ token: null, user: null, isAuthenticated: false }),
+      setAuth: (token, refreshToken, user) => set({ token, refreshToken, user, isAuthenticated: true }),
+      logout: () => set({ token: null, refreshToken: null, user: null, isAuthenticated: false }),
     }),
     { name: 'catalogue-auth' },
   ),
