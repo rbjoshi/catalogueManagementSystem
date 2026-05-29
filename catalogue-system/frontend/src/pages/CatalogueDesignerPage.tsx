@@ -35,6 +35,7 @@ interface DesignerItem {
 }
 
 interface DisplayFields {
+  image: boolean
   name: boolean
   price: boolean
   sku: boolean
@@ -66,20 +67,22 @@ function SortableCard({ di, onRemove, onUpdate, displayFields }: { di: DesignerI
           <GripVertical size={14} />
         </button>
         <div className="flex-1 min-w-0">
-          {currentImgUrl ? (
-            <div className="relative w-full h-24 mb-2 group/img">
-              <img src={getImageUrl(currentImgUrl)} alt="" className="w-full h-full object-cover rounded-lg border border-slate-100" />
-              {hasMultipleImages && (
-                <>
-                  <button onClick={() => cycleImage(-1)} className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/img:opacity-100 bg-white/90 p-0.5 rounded-full text-slate-700 hover:bg-white shadow-sm transition-opacity"><ChevronLeft size={14}/></button>
-                  <button onClick={() => cycleImage(1)} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/img:opacity-100 bg-white/90 p-0.5 rounded-full text-slate-700 hover:bg-white shadow-sm transition-opacity"><ChevronRight size={14}/></button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="w-full h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center">
-              <Package size={20} className="text-slate-300" />
-            </div>
+          {displayFields.image && (
+            currentImgUrl ? (
+              <div className="relative w-full h-24 mb-2 group/img">
+                <img src={getImageUrl(currentImgUrl)} alt="" className="w-full h-full object-cover rounded-lg border border-slate-100" />
+                {hasMultipleImages && (
+                  <>
+                    <button onClick={() => cycleImage(-1)} className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/img:opacity-100 bg-white/90 p-0.5 rounded-full text-slate-700 hover:bg-white shadow-sm transition-opacity"><ChevronLeft size={14}/></button>
+                    <button onClick={() => cycleImage(1)} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/img:opacity-100 bg-white/90 p-0.5 rounded-full text-slate-700 hover:bg-white shadow-sm transition-opacity"><ChevronRight size={14}/></button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="w-full h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center">
+                <Package size={20} className="text-slate-300" />
+              </div>
+            )
           )}
           {displayFields.name && (
             <p className="text-xs font-medium text-slate-700 leading-tight truncate">
@@ -133,6 +136,7 @@ export default function CatalogueDesignerPage() {
   const [showItemPicker, setShowItemPicker] = useState(false)
   const [catalogueStyle, setCatalogueStyle] = useState<'GRID' | 'TABULAR'>('GRID')
   const [displayFields, setDisplayFields] = useState<DisplayFields>({
+    image: true,
     name: true,
     price: true,
     sku: true,
@@ -195,7 +199,7 @@ export default function CatalogueDesignerPage() {
       if (c.layoutJson) {
         if (c.layoutJson.style) setCatalogueStyle(c.layoutJson.style as 'GRID' | 'TABULAR')
         if (c.layoutJson.tabularSettings) setTabularSettings({ ...tabularSettings, ...(c.layoutJson.tabularSettings as any) })
-        if (c.layoutJson.displayFields) setDisplayFields(c.layoutJson.displayFields as DisplayFields)
+        if (c.layoutJson.displayFields) setDisplayFields(prev => ({ ...prev, ...(c.layoutJson.displayFields as DisplayFields) }))
       }
       if (c.items) {
         setDesignerItems(c.items.map(ci => ({

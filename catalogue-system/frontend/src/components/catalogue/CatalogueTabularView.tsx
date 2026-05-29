@@ -34,6 +34,7 @@ interface TabularSettings {
 }
 
 interface DisplayFields {
+  image?: boolean
   name: boolean
   price: boolean
   sku: boolean
@@ -86,6 +87,7 @@ export default function CatalogueTabularView({ items, settings, displayFields }:
                     <table className={`w-full border-collapse border-2 ${borderColorClass}`}>
                       <thead>
                         <tr className="bg-slate-50">
+                          {displayFields?.image && <th className={`border ${borderColorClass} p-2 text-center font-semibold text-sm w-16`}>IMAGE</th>}
                           {displayFields?.sku && <th className={`border ${borderColorClass} p-2 text-left font-semibold text-sm`}>{settings.headerSku || 'SKU'}</th>}
                           {displayFields?.name && <th className={`border ${borderColorClass} p-2 text-left font-semibold text-sm`}>{settings.headerName || 'MODEL NO.'}</th>}
                           {displayFields?.description && <th className={`border ${borderColorClass} p-2 text-left font-semibold text-sm`}>{settings.headerDesc || 'DESCRIPTION'}</th>}
@@ -95,22 +97,32 @@ export default function CatalogueTabularView({ items, settings, displayFields }:
                         </tr>
                       </thead>
                       <tbody>
-                        {groupItems.map(di => (
-                          <tr key={di.id} className="hover:bg-slate-50 transition-colors">
-                            {displayFields?.sku && <td className={`border ${borderColorClass} p-2 text-sm`}>{di.item.sku || '-'}</td>}
-                            {displayFields?.name && <td className={`border ${borderColorClass} p-2 text-sm`}>{di.customName || di.item.name || '-'}</td>}
-                            {displayFields?.description && <td className={`border ${borderColorClass} p-2 text-sm text-slate-600`}>{di.item.shortDesc || di.item.description || '-'}</td>}
-                            {displayFields?.size && <td className={`border ${borderColorClass} p-2 text-center text-sm`}>
-                              {di.item.itemSize ? `${di.item.itemSize.label} ${di.item.itemSize.unit || ''}` : '-'}
-                            </td>}
-                            {displayFields?.brand && <td className={`border ${borderColorClass} p-2 text-center text-sm`}>
-                               {di.item.itemBrand?.name || '-'}
-                            </td>}
-                            {displayFields?.price && <td className={`border ${borderColorClass} p-2 text-right text-sm font-medium`}>
-                              {di.item.price != null ? `${(di.customPrice ?? di.item.price).toFixed(2)}` : '-'}
-                            </td>}
-                          </tr>
-                        ))}
+                        {groupItems.map(di => {
+                          const currentImgUrl = di.customOverrides?.imageUrl || di.item.images?.[0]?.url
+                          return (
+                            <tr key={di.id} className="hover:bg-slate-50 transition-colors">
+                              {displayFields?.image && (
+                                <td className={`border ${borderColorClass} p-2 text-center align-middle`}>
+                                  {currentImgUrl ? (
+                                    <img src={getImageUrl(currentImgUrl)} alt="" className="w-12 h-12 object-cover rounded border border-slate-200 mx-auto" />
+                                  ) : '-'}
+                                </td>
+                              )}
+                              {displayFields?.sku && <td className={`border ${borderColorClass} p-2 text-sm align-middle`}>{di.item.sku || '-'}</td>}
+                              {displayFields?.name && <td className={`border ${borderColorClass} p-2 text-sm align-middle`}>{di.customName || di.item.name || '-'}</td>}
+                              {displayFields?.description && <td className={`border ${borderColorClass} p-2 text-sm text-slate-600 align-middle`}>{di.item.shortDesc || di.item.description || '-'}</td>}
+                              {displayFields?.size && <td className={`border ${borderColorClass} p-2 text-center text-sm align-middle`}>
+                                {di.item.itemSize ? `${di.item.itemSize.label} ${di.item.itemSize.unit || ''}` : '-'}
+                              </td>}
+                              {displayFields?.brand && <td className={`border ${borderColorClass} p-2 text-center text-sm align-middle`}>
+                                 {di.item.itemBrand?.name || '-'}
+                              </td>}
+                              {displayFields?.price && <td className={`border ${borderColorClass} p-2 text-right text-sm font-medium align-middle`}>
+                                {di.item.price != null ? `${(di.customPrice ?? di.item.price).toFixed(2)}` : '-'}
+                              </td>}
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
