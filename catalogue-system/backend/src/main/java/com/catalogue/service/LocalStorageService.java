@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 package com.catalogue.service;
 
 import lombok.extern.slf4j.Slf4j;

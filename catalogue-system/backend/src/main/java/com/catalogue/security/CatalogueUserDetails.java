@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 package com.catalogue.security;
 
 import com.catalogue.entity.User;

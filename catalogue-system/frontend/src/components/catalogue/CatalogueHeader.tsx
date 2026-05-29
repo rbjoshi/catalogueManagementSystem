@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 import React from 'react'
 import { getImageUrl } from '@/utils/imageUrl'
 

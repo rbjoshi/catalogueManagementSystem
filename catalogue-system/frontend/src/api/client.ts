@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 import axios from 'axios'
 import { useAuthStore } from '@/store/authStore'
 

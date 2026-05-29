@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export interface UserInfo {
   userId: string

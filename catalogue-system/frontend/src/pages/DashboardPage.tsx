@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Package, BookOpen, FileText, Plus, ArrowRight } from 'lucide-react'

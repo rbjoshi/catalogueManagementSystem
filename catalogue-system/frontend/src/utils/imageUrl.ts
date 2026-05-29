@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 /// <reference types="vite/client" />
 
 export const getImageUrl = (url?: string): string => {

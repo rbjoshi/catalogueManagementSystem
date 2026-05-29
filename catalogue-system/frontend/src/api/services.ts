@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 import api from './client'
 import type {
   ApiResponse, AuthResponse, PageResponse,

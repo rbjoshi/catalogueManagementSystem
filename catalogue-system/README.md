@@ -94,28 +94,47 @@ catalogue-system/
 
 ## 🚀 Quick Start (Local Development)
 
-Want to run this project locally? 
+Want to run this project locally? Follow these steps to get everything up and running.
+
+### Prerequisites
+Ensure you have the following installed on your local machine:
+- **Java 17** or higher
+- **Node.js 18** or higher
+- **Docker** and **Docker Compose**
+- **Maven** (optional, you can use the included wrapper if available)
 
 ### 1. Start Infrastructure via Docker
+The system relies on PostgreSQL and Redis. You can easily start these services using Docker Compose.
 ```bash
-# Starts Postgres and Redis
+# From the root of the project, start Postgres and Redis in the background
 docker-compose up -d
 ```
 
 ### 2. Run the Backend (Spring Boot)
+The backend is a Spring Boot application built with Java 17.
 ```bash
 cd backend
+
+# Build and run the application using Maven
+mvn clean install
 mvn spring-boot:run
-# API available at: http://localhost:8080/api
-# Swagger Docs at:  http://localhost:8080/api/swagger-ui.html
+
+# The API will be available at: http://localhost:8080/api
+# Swagger Documentation:  http://localhost:8080/api/swagger-ui.html
 ```
 
 ### 3. Run the Frontend (React / Vite)
+The frontend is a modern React application built with Vite.
 ```bash
 cd frontend
+
+# Install all necessary dependencies
 npm install
+
+# Start the development server
 npm run dev
-# App available at: http://localhost:5173
+
+# The application will be available at: http://localhost:5173
 ```
 
 ---

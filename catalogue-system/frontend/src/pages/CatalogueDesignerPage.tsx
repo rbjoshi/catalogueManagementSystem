@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 import { useState, useEffect, useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
 import { useParams, useNavigate, Link } from 'react-router-dom'

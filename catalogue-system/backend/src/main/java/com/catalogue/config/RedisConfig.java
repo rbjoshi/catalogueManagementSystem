@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 package com.catalogue.config;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;

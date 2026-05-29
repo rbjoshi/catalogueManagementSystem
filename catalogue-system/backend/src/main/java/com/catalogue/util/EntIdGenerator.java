@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2026. All rights reserved.
+ */
 package com.catalogue.util;
 
 import org.apache.commons.lang3.RandomStringUtils;
